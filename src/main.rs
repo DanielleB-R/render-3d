@@ -1,5 +1,5 @@
 use glam::Vec3;
-use image::{ImageBuffer, Rgb, RgbImage};
+use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 
 type Color = Rgb<u8>;
 
@@ -32,7 +32,42 @@ impl Viewport {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LightType {
+    Ambient,
+    Directional,
+    Point,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Light {
+    style: LightType,
+    intensity: f32,
+    vector: Vec3,
+}
+
+impl Light {
+    fn compute_lighting(&self, point: Vec3, normal: Vec3) -> f32 {
+        if self.style == LightType::Ambient {
+            self.intensity
+        } else {
+            let l = if self.style == LightType::Point {
+                self.vector - point
+            } else {
+                self.vector
+            };
+
+            let ndotl = normal.dot(l);
+            if ndotl >= 0.0 {
+                self.intensity * ndotl / (normal.length() * l.length())
+            } else {
+                0.0
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct Sphere {
     center: Vec3,
     radius: f32,
@@ -61,27 +96,42 @@ impl Sphere {
 
 struct Scene {
     spheres: Vec<Sphere>,
+    lights: Vec<Light>,
     background: Color,
 }
 
 impl Scene {
+    fn light_point(&self, point: Vec3, normal: Vec3) -> f32 {
+        self.lights
+            .iter()
+            .map(|light| light.compute_lighting(point, normal))
+            .sum()
+    }
+
     fn trace_ray(&self, origin: Vec3, d: Vec3, min_t: f32, max_t: f32) -> Color {
         let mut closest_t = f32::INFINITY;
-        let mut pixel_color = self.background;
+        let mut closest_sphere = None;
 
         for sphere in &self.spheres {
             let (t1, t2) = sphere.intersect_ray_sphere(origin, d);
             if t1 <= max_t && t1 >= min_t && t1 < closest_t {
                 closest_t = t1;
-                pixel_color = sphere.color;
+                closest_sphere = Some(*sphere);
             }
             if t2 <= max_t && t2 >= min_t && t2 < closest_t {
                 closest_t = t2;
-                pixel_color = sphere.color;
+                closest_sphere = Some(*sphere);
             }
         }
 
-        pixel_color
+        if let Some(sphere) = closest_sphere {
+            let point = origin + closest_t * d;
+            let normal = (point - sphere.center).normalize();
+            let intensity = self.light_point(point, normal);
+            sphere.color.map(|c| ((c as f32) * intensity) as u8)
+        } else {
+            self.background
+        }
     }
 }
 
@@ -111,6 +161,28 @@ fn main() {
                 center: Vec3::new(-2.0, 0.0, 4.0),
                 radius: 1.0,
                 color: Rgb([0, 255, 0]),
+            },
+            Sphere {
+                center: Vec3::new(0.0, -5001.0, 0.0),
+                radius: 5000.0,
+                color: Rgb([255, 255, 0]),
+            },
+        ],
+        lights: vec![
+            Light {
+                style: LightType::Ambient,
+                intensity: 0.2,
+                vector: Vec3::ZERO,
+            },
+            Light {
+                style: LightType::Point,
+                intensity: 0.6,
+                vector: Vec3::new(2.0, 1.0, 0.0),
+            },
+            Light {
+                style: LightType::Directional,
+                intensity: 0.2,
+                vector: Vec3::new(1.0, 4.0, 4.0),
             },
         ],
     };
