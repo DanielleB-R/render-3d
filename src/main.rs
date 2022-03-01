@@ -40,7 +40,7 @@ enum Light {
 }
 
 impl Light {
-    fn compute_lighting(&self, point: Vec3, normal: Vec3) -> f32 {
+    fn compute_lighting(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
         if let Self::Ambient(intensity) = self {
             *intensity
         } else {
@@ -57,11 +57,25 @@ impl Light {
             };
 
             let ndotl = normal.dot(l);
-            if ndotl >= 0.0 {
+            let diffuse = if ndotl >= 0.0 {
                 intensity * ndotl / (normal.length() * l.length())
             } else {
                 0.0
-            }
+            };
+
+            let specular_intensity = if specular != -1 {
+                let r = 2.0 * normal.dot(l) * normal - l;
+                let rdotv = r.dot(view);
+                if rdotv > 0.0 {
+                    intensity * (rdotv / (r.length() * view.length())).powi(specular)
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            };
+
+            diffuse + specular_intensity
         }
     }
 }
@@ -71,6 +85,7 @@ struct Sphere {
     center: Vec3,
     radius: f32,
     color: Color,
+    specular: i32,
 }
 
 impl Sphere {
@@ -100,10 +115,10 @@ struct Scene {
 }
 
 impl Scene {
-    fn light_point(&self, point: Vec3, normal: Vec3) -> f32 {
+    fn light_point(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
         self.lights
             .iter()
-            .map(|light| light.compute_lighting(point, normal))
+            .map(|light| light.compute_lighting(point, normal, view, specular))
             .sum()
     }
 
@@ -126,8 +141,10 @@ impl Scene {
         if let Some(sphere) = closest_sphere {
             let point = origin + closest_t * d;
             let normal = (point - sphere.center).normalize();
-            let intensity = self.light_point(point, normal);
-            sphere.color.map(|c| ((c as f32) * intensity) as u8)
+            let intensity = self.light_point(point, normal, -d, sphere.specular);
+            sphere
+                .color
+                .map(|c| ((c as f32) * intensity).clamp(0.0, 255.0) as u8)
         } else {
             self.background
         }
@@ -150,21 +167,25 @@ fn main() {
                 center: Vec3::new(0.0, -1.0, 3.0),
                 radius: 1.0,
                 color: Rgb([255, 0, 0]),
+                specular: 500,
             },
             Sphere {
                 center: Vec3::new(2.0, 0.0, 4.0),
                 radius: 1.0,
                 color: Rgb([0, 0, 255]),
+                specular: 500,
             },
             Sphere {
                 center: Vec3::new(-2.0, 0.0, 4.0),
                 radius: 1.0,
                 color: Rgb([0, 255, 0]),
+                specular: 10,
             },
             Sphere {
                 center: Vec3::new(0.0, -5001.0, 0.0),
                 radius: 5000.0,
                 color: Rgb([255, 255, 0]),
+                specular: 1000,
             },
         ],
         lights: vec![
