@@ -32,34 +32,33 @@ impl Viewport {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LightType {
-    Ambient,
-    Directional,
-    Point,
-}
-
 #[derive(Debug, Clone, Copy)]
-struct Light {
-    style: LightType,
-    intensity: f32,
-    vector: Vec3,
+enum Light {
+    Ambient(f32),
+    Directional { intensity: f32, direction: Vec3 },
+    Point { intensity: f32, position: Vec3 },
 }
 
 impl Light {
     fn compute_lighting(&self, point: Vec3, normal: Vec3) -> f32 {
-        if self.style == LightType::Ambient {
-            self.intensity
+        if let Self::Ambient(intensity) = self {
+            *intensity
         } else {
-            let l = if self.style == LightType::Point {
-                self.vector - point
-            } else {
-                self.vector
+            let (l, intensity) = match self {
+                Self::Directional {
+                    intensity,
+                    direction,
+                } => (*direction, intensity),
+                Self::Point {
+                    intensity,
+                    position,
+                } => (*position - point, intensity),
+                Self::Ambient(_) => unreachable!(),
             };
 
             let ndotl = normal.dot(l);
             if ndotl >= 0.0 {
-                self.intensity * ndotl / (normal.length() * l.length())
+                intensity * ndotl / (normal.length() * l.length())
             } else {
                 0.0
             }
@@ -169,20 +168,14 @@ fn main() {
             },
         ],
         lights: vec![
-            Light {
-                style: LightType::Ambient,
-                intensity: 0.2,
-                vector: Vec3::ZERO,
-            },
-            Light {
-                style: LightType::Point,
+            Light::Ambient(0.2),
+            Light::Point {
                 intensity: 0.6,
-                vector: Vec3::new(2.0, 1.0, 0.0),
+                position: Vec3::new(2.0, 1.0, 0.0),
             },
-            Light {
-                style: LightType::Directional,
+            Light::Directional {
                 intensity: 0.2,
-                vector: Vec3::new(1.0, 4.0, 4.0),
+                direction: Vec3::new(1.0, 4.0, 4.0),
             },
         ],
     };
