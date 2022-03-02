@@ -44,41 +44,41 @@ enum Light {
 impl Light {
     fn compute_lighting(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
         if let Self::Ambient { intensity } = self {
-            *intensity
-        } else {
-            let (l, intensity) = match self {
-                Self::Directional {
-                    intensity,
-                    direction,
-                } => (*direction, intensity),
-                Self::Point {
-                    intensity,
-                    position,
-                } => (*position - point, intensity),
-                _ => unreachable!(),
-            };
-
-            let ndotl = normal.dot(l);
-            let diffuse = if ndotl >= 0.0 {
-                intensity * ndotl / (normal.length() * l.length())
-            } else {
-                0.0
-            };
-
-            let specular_intensity = if specular != -1 {
-                let r = 2.0 * normal.dot(l) * normal - l;
-                let rdotv = r.dot(view);
-                if rdotv > 0.0 {
-                    intensity * (rdotv / (r.length() * view.length())).powi(specular)
-                } else {
-                    0.0
-                }
-            } else {
-                0.0
-            };
-
-            diffuse + specular_intensity
+            return *intensity;
         }
+
+        let (l, intensity) = match self {
+            Self::Directional {
+                intensity,
+                direction,
+            } => (*direction, intensity),
+            Self::Point {
+                intensity,
+                position,
+            } => (*position - point, intensity),
+            _ => unreachable!(),
+        };
+
+        let ndotl = normal.dot(l);
+        let diffuse = if ndotl >= 0.0 {
+            intensity * ndotl / (normal.length() * l.length())
+        } else {
+            0.0
+        };
+
+        let specular_intensity = if specular != -1 {
+            let r = 2.0 * normal.dot(l) * normal - l;
+            let rdotv = r.dot(view);
+            if rdotv > 0.0 {
+                intensity * (rdotv / (r.length() * view.length())).powi(specular)
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+
+        diffuse + specular_intensity
     }
 }
 
@@ -125,12 +125,18 @@ impl Scene {
             .sum()
     }
 
-    fn trace_ray(&self, origin: Vec3, d: Vec3, min_t: f32, max_t: f32) -> Color {
+    fn closest_intersection(
+        &self,
+        origin: Vec3,
+        direction: Vec3,
+        min_t: f32,
+        max_t: f32,
+    ) -> (Option<Sphere>, f32) {
         let mut closest_t = f32::INFINITY;
         let mut closest_sphere = None;
 
         for sphere in &self.spheres {
-            let (t1, t2) = sphere.intersect_ray_sphere(origin, d);
+            let (t1, t2) = sphere.intersect_ray_sphere(origin, direction);
             if t1 <= max_t && t1 >= min_t && t1 < closest_t {
                 closest_t = t1;
                 closest_sphere = Some(*sphere);
@@ -140,11 +146,17 @@ impl Scene {
                 closest_sphere = Some(*sphere);
             }
         }
+        (closest_sphere, closest_t)
+    }
+
+    fn trace_ray(&self, origin: Vec3, direction: Vec3, min_t: f32, max_t: f32) -> Color {
+        let (closest_sphere, closest_t) =
+            self.closest_intersection(origin, direction, min_t, max_t);
 
         if let Some(sphere) = closest_sphere {
-            let point = origin + closest_t * d;
+            let point = origin + closest_t * direction;
             let normal = (point - sphere.center).normalize();
-            let intensity = self.light_point(point, normal, -d, sphere.specular);
+            let intensity = self.light_point(point, normal, -direction, sphere.specular);
             sphere
                 .color
                 .map(|c| ((c as f32) * intensity).clamp(0.0, 255.0) as u8)
