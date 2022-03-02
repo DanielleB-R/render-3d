@@ -1,41 +1,13 @@
+mod camera;
+mod canvas;
+
+use crate::camera::Viewport;
+use crate::canvas::SymmetricCanvas;
 use glam::Vec3;
 use image::{ImageBuffer, RgbImage};
 use serde::Deserialize;
 
 type Color = Vec3;
-
-trait SymmetricCanvas {
-    fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color);
-}
-
-impl SymmetricCanvas for RgbImage {
-    fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color) {
-        let x = ((self.width() / 2) as i32 + cx) as u32;
-        let y = ((self.height() / 2) as i32 - cy) as u32 - 1;
-        let color_data = color
-            .clamp(Vec3::splat(0.0), Vec3::splat(255.0))
-            .to_array()
-            .map(|f| f as u8);
-        self.put_pixel(x, y, color_data.into());
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-struct Viewport {
-    width: f32,
-    height: f32,
-    distance: f32,
-}
-
-impl Viewport {
-    pub fn from_canvas(&self, canvas: &RgbImage, cx: i32, cy: i32) -> Vec3 {
-        Vec3::new(
-            cx as f32 * (self.width) / (canvas.width() as f32),
-            cy as f32 * (self.height) / (canvas.height() as f32),
-            self.distance,
-        )
-    }
-}
 
 fn reflect_ray(ray: Vec3, normal: Vec3) -> Vec3 {
     2.0 * normal.dot(ray) * normal - ray
@@ -137,6 +109,7 @@ struct Scene {
     spheres: Vec<Sphere>,
     lights: Vec<Light>,
     background: Color,
+    viewport: Viewport,
 }
 
 impl Scene {
@@ -205,18 +178,13 @@ impl Scene {
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
     let origin = Vec3::new(0.0, 0.0, 0.0);
-    let viewport = Viewport {
-        width: 1.0,
-        height: 1.0,
-        distance: 1.0,
-    };
 
     let scene: Scene = serde_yaml::from_slice(&std::fs::read("scene.yaml").unwrap()).unwrap();
 
     for cx in -256..256 {
         for cy in -256..256 {
-            let d = viewport.from_canvas(&buffer, cx, cy);
-            let color = scene.trace_ray(origin, d, 1.0, f32::INFINITY, 3);
+            let direction = scene.viewport.direction_from_canvas(&buffer, cx, cy);
+            let color = scene.trace_ray(origin, direction, 1.0, f32::INFINITY, 3);
             buffer.put_canvas_pixel(cx, cy, color);
         }
     }
