@@ -1,7 +1,7 @@
 mod camera;
 mod canvas;
 
-use crate::camera::Viewport;
+use crate::camera::Camera;
 use crate::canvas::SymmetricCanvas;
 use glam::DVec3;
 use image::{ImageBuffer, RgbImage};
@@ -109,7 +109,7 @@ struct Scene {
     spheres: Vec<Sphere>,
     lights: Vec<Light>,
     background: Color,
-    viewport: Viewport,
+    camera: Camera,
 }
 
 impl Scene {
@@ -177,14 +177,13 @@ impl Scene {
 
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
-    let origin = DVec3::new(0.0, 0.0, 0.0);
 
     let scene: Scene = serde_yaml::from_slice(&std::fs::read("scene.yaml").unwrap()).unwrap();
 
     for cx in -256..256 {
         for cy in -256..256 {
-            let direction = scene.viewport.direction_from_canvas(&buffer, cx, cy);
-            let color = scene.trace_ray(origin, direction, 1.0, f64::INFINITY, 3);
+            let direction = scene.camera.viewport.direction_from_canvas(&buffer, cx, cy);
+            let color = scene.trace_ray(scene.camera.position, direction, 1.0, f64::INFINITY, 3);
             buffer.put_canvas_pixel(cx, cy, color);
         }
     }

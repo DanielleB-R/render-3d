@@ -18,3 +18,9 @@ impl Viewport {
         )
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+pub struct Camera {
+    pub viewport: Viewport,
+    pub position: DVec3,
+}
