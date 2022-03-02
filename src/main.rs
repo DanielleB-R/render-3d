@@ -42,22 +42,34 @@ enum Light {
 }
 
 impl Light {
-    fn compute_lighting(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
+    fn compute_lighting(
+        &self,
+        point: Vec3,
+        normal: Vec3,
+        view: Vec3,
+        specular: i32,
+        scene: &Scene,
+    ) -> f32 {
         if let Self::Ambient { intensity } = self {
             return *intensity;
         }
 
-        let (l, intensity) = match self {
+        let (l, intensity, max_t) = match self {
             Self::Directional {
                 intensity,
                 direction,
-            } => (*direction, intensity),
+            } => (*direction, intensity, f32::INFINITY),
             Self::Point {
                 intensity,
                 position,
-            } => (*position - point, intensity),
+            } => (*position - point, intensity, 1.0),
             _ => unreachable!(),
         };
+
+        let (shadow_sphere, _) = scene.closest_intersection(point, l, 0.001, max_t);
+        if shadow_sphere.is_some() {
+            return 0.0;
+        }
 
         let ndotl = normal.dot(l);
         let diffuse = if ndotl >= 0.0 {
@@ -121,7 +133,7 @@ impl Scene {
     fn light_point(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
         self.lights
             .iter()
-            .map(|light| light.compute_lighting(point, normal, view, specular))
+            .map(|light| light.compute_lighting(point, normal, view, specular, self))
             .sum()
     }
 
