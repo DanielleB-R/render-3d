@@ -3,33 +3,33 @@ mod canvas;
 
 use crate::camera::Viewport;
 use crate::canvas::SymmetricCanvas;
-use glam::Vec3;
+use glam::DVec3;
 use image::{ImageBuffer, RgbImage};
 use serde::Deserialize;
 
-type Color = Vec3;
+type Color = DVec3;
 
-fn reflect_ray(ray: Vec3, normal: Vec3) -> Vec3 {
+fn reflect_ray(ray: DVec3, normal: DVec3) -> DVec3 {
     2.0 * normal.dot(ray) * normal - ray
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(tag = "type")]
 enum Light {
-    Ambient { intensity: f32 },
-    Directional { intensity: f32, direction: Vec3 },
-    Point { intensity: f32, position: Vec3 },
+    Ambient { intensity: f64 },
+    Directional { intensity: f64, direction: DVec3 },
+    Point { intensity: f64, position: DVec3 },
 }
 
 impl Light {
     fn compute_lighting(
         &self,
-        point: Vec3,
-        normal: Vec3,
-        view: Vec3,
+        point: DVec3,
+        normal: DVec3,
+        view: DVec3,
         specular: i32,
         scene: &Scene,
-    ) -> f32 {
+    ) -> f64 {
         if let Self::Ambient { intensity } = self {
             return *intensity;
         }
@@ -38,7 +38,7 @@ impl Light {
             Self::Directional {
                 intensity,
                 direction,
-            } => (*direction, intensity, f32::INFINITY),
+            } => (*direction, intensity, f64::INFINITY),
             Self::Point {
                 intensity,
                 position,
@@ -76,16 +76,16 @@ impl Light {
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 struct Sphere {
-    center: Vec3,
-    radius: f32,
+    center: DVec3,
+    radius: f64,
     color: Color,
     specular: i32,
     #[serde(default)]
-    reflective: f32,
+    reflective: f64,
 }
 
 impl Sphere {
-    fn intersect_ray_sphere(&self, origin: Vec3, d: Vec3) -> (f32, f32) {
+    fn intersect_ray_sphere(&self, origin: DVec3, d: DVec3) -> (f64, f64) {
         let co = origin - self.center;
 
         let a = d.dot(d);
@@ -94,7 +94,7 @@ impl Sphere {
 
         let discriminant = b * b - 4.0 * a * c;
         if discriminant < 0.0 {
-            return (f32::INFINITY, f32::INFINITY);
+            return (f64::INFINITY, f64::INFINITY);
         }
 
         let t1 = (-b + discriminant.sqrt()) / (2.0 * a);
@@ -113,7 +113,7 @@ struct Scene {
 }
 
 impl Scene {
-    fn light_point(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
+    fn light_point(&self, point: DVec3, normal: DVec3, view: DVec3, specular: i32) -> f64 {
         self.lights
             .iter()
             .map(|light| light.compute_lighting(point, normal, view, specular, self))
@@ -122,12 +122,12 @@ impl Scene {
 
     fn closest_intersection(
         &self,
-        origin: Vec3,
-        direction: Vec3,
-        min_t: f32,
-        max_t: f32,
-    ) -> (Option<Sphere>, f32) {
-        let mut closest_t = f32::INFINITY;
+        origin: DVec3,
+        direction: DVec3,
+        min_t: f64,
+        max_t: f64,
+    ) -> (Option<Sphere>, f64) {
+        let mut closest_t = f64::INFINITY;
         let mut closest_sphere = None;
 
         for sphere in &self.spheres {
@@ -146,10 +146,10 @@ impl Scene {
 
     fn trace_ray(
         &self,
-        origin: Vec3,
-        direction: Vec3,
-        min_t: f32,
-        max_t: f32,
+        origin: DVec3,
+        direction: DVec3,
+        min_t: f64,
+        max_t: f64,
         recursion_depth: u8,
     ) -> Color {
         let (closest_sphere, closest_t) =
@@ -169,7 +169,7 @@ impl Scene {
             return local_color;
         }
         let r = reflect_ray(-direction, normal);
-        let reflected_color = self.trace_ray(point, r, 0.001, f32::INFINITY, recursion_depth - 1);
+        let reflected_color = self.trace_ray(point, r, 0.001, f64::INFINITY, recursion_depth - 1);
 
         local_color * (1.0 - sphere.reflective) + reflected_color * sphere.reflective
     }
@@ -177,14 +177,14 @@ impl Scene {
 
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
-    let origin = Vec3::new(0.0, 0.0, 0.0);
+    let origin = DVec3::new(0.0, 0.0, 0.0);
 
     let scene: Scene = serde_yaml::from_slice(&std::fs::read("scene.yaml").unwrap()).unwrap();
 
     for cx in -256..256 {
         for cy in -256..256 {
             let direction = scene.viewport.direction_from_canvas(&buffer, cx, cy);
-            let color = scene.trace_ray(origin, direction, 1.0, f32::INFINITY, 3);
+            let color = scene.trace_ray(origin, direction, 1.0, f64::INFINITY, 3);
             buffer.put_canvas_pixel(cx, cy, color);
         }
     }
