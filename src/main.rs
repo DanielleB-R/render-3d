@@ -1,7 +1,8 @@
 use glam::Vec3;
-use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use image::{ImageBuffer, RgbImage};
+use serde::Deserialize;
 
-type Color = Rgb<u8>;
+type Color = [u8; 3];
 
 trait SymmetricCanvas {
     fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color);
@@ -11,7 +12,7 @@ impl SymmetricCanvas for RgbImage {
     fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color) {
         let x = ((self.width() / 2) as i32 + cx) as u32;
         let y = ((self.height() / 2) as i32 - cy) as u32 - 1;
-        self.put_pixel(x, y, color);
+        self.put_pixel(x, y, color.into());
     }
 }
 
@@ -32,16 +33,17 @@ impl Viewport {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(tag = "type")]
 enum Light {
-    Ambient(f32),
+    Ambient { intensity: f32 },
     Directional { intensity: f32, direction: Vec3 },
     Point { intensity: f32, position: Vec3 },
 }
 
 impl Light {
     fn compute_lighting(&self, point: Vec3, normal: Vec3, view: Vec3, specular: i32) -> f32 {
-        if let Self::Ambient(intensity) = self {
+        if let Self::Ambient { intensity } = self {
             *intensity
         } else {
             let (l, intensity) = match self {
@@ -53,7 +55,7 @@ impl Light {
                     intensity,
                     position,
                 } => (*position - point, intensity),
-                Self::Ambient(_) => unreachable!(),
+                _ => unreachable!(),
             };
 
             let ndotl = normal.dot(l);
@@ -80,7 +82,7 @@ impl Light {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 struct Sphere {
     center: Vec3,
     radius: f32,
@@ -108,6 +110,7 @@ impl Sphere {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
 struct Scene {
     spheres: Vec<Sphere>,
     lights: Vec<Light>,
@@ -160,46 +163,7 @@ fn main() {
         distance: 1.0,
     };
 
-    let scene = Scene {
-        background: Rgb([255, 255, 255]),
-        spheres: vec![
-            Sphere {
-                center: Vec3::new(0.0, -1.0, 3.0),
-                radius: 1.0,
-                color: Rgb([255, 0, 0]),
-                specular: 500,
-            },
-            Sphere {
-                center: Vec3::new(2.0, 0.0, 4.0),
-                radius: 1.0,
-                color: Rgb([0, 0, 255]),
-                specular: 500,
-            },
-            Sphere {
-                center: Vec3::new(-2.0, 0.0, 4.0),
-                radius: 1.0,
-                color: Rgb([0, 255, 0]),
-                specular: 10,
-            },
-            Sphere {
-                center: Vec3::new(0.0, -5001.0, 0.0),
-                radius: 5000.0,
-                color: Rgb([255, 255, 0]),
-                specular: 1000,
-            },
-        ],
-        lights: vec![
-            Light::Ambient(0.2),
-            Light::Point {
-                intensity: 0.6,
-                position: Vec3::new(2.0, 1.0, 0.0),
-            },
-            Light::Directional {
-                intensity: 0.2,
-                direction: Vec3::new(1.0, 4.0, 4.0),
-            },
-        ],
-    };
+    let scene: Scene = serde_yaml::from_slice(&std::fs::read("scene.yaml").unwrap()).unwrap();
 
     for cx in -256..256 {
         for cy in -256..256 {
