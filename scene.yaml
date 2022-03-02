@@ -4,21 +4,25 @@ spheres:
     radius: 1
     color: [255, 0, 0]
     specular: 500
+    reflective: 0.2
 
   - center: [2, 0, 4]
     radius: 1
     color: [0, 0, 255]
     specular: 500
+    reflective: 0.3
 
   - center: [-2, 0, 4]
     radius: 1
     color: [0, 255, 0]
     specular: 10
+    reflective: 0.4
 
   - center: [0, -5001, 0]
     radius: 5000
     color: [255, 255, 0]
     specular: 1000
+    reflective: 0.4
 
 lights:
   - type: Ambient

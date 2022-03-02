@@ -2,7 +2,7 @@ use glam::Vec3;
 use image::{ImageBuffer, RgbImage};
 use serde::Deserialize;
 
-type Color = [u8; 3];
+type Color = Vec3;
 
 trait SymmetricCanvas {
     fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color);
@@ -12,7 +12,11 @@ impl SymmetricCanvas for RgbImage {
     fn put_canvas_pixel(&mut self, cx: i32, cy: i32, color: Color) {
         let x = ((self.width() / 2) as i32 + cx) as u32;
         let y = ((self.height() / 2) as i32 - cy) as u32 - 1;
-        self.put_pixel(x, y, color.into());
+        let color_data = color
+            .clamp(Vec3::splat(0.0), Vec3::splat(255.0))
+            .to_array()
+            .map(|f| f as u8);
+        self.put_pixel(x, y, color_data.into());
     }
 }
 
@@ -31,6 +35,10 @@ impl Viewport {
             self.distance,
         )
     }
+}
+
+fn reflect_ray(ray: Vec3, normal: Vec3) -> Vec3 {
+    2.0 * normal.dot(ray) * normal - ray
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -79,7 +87,7 @@ impl Light {
         };
 
         let specular_intensity = if specular != -1 {
-            let r = 2.0 * normal.dot(l) * normal - l;
+            let r = reflect_ray(l, normal);
             let rdotv = r.dot(view);
             if rdotv > 0.0 {
                 intensity * (rdotv / (r.length() * view.length())).powi(specular)
@@ -100,6 +108,8 @@ struct Sphere {
     radius: f32,
     color: Color,
     specular: i32,
+    #[serde(default)]
+    reflective: f32,
 }
 
 impl Sphere {
@@ -165,16 +175,15 @@ impl Scene {
         let (closest_sphere, closest_t) =
             self.closest_intersection(origin, direction, min_t, max_t);
 
-        if let Some(sphere) = closest_sphere {
-            let point = origin + closest_t * direction;
-            let normal = (point - sphere.center).normalize();
-            let intensity = self.light_point(point, normal, -direction, sphere.specular);
-            sphere
-                .color
-                .map(|c| ((c as f32) * intensity).clamp(0.0, 255.0) as u8)
-        } else {
-            self.background
+        if closest_sphere.is_none() {
+            return self.background;
         }
+        let sphere = closest_sphere.unwrap();
+
+        let point = origin + closest_t * direction;
+        let normal = (point - sphere.center).normalize();
+        let intensity = self.light_point(point, normal, -direction, sphere.specular);
+        sphere.color * intensity
     }
 }
 
