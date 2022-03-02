@@ -171,7 +171,14 @@ impl Scene {
         (closest_sphere, closest_t)
     }
 
-    fn trace_ray(&self, origin: Vec3, direction: Vec3, min_t: f32, max_t: f32) -> Color {
+    fn trace_ray(
+        &self,
+        origin: Vec3,
+        direction: Vec3,
+        min_t: f32,
+        max_t: f32,
+        recursion_depth: u8,
+    ) -> Color {
         let (closest_sphere, closest_t) =
             self.closest_intersection(origin, direction, min_t, max_t);
 
@@ -183,7 +190,15 @@ impl Scene {
         let point = origin + closest_t * direction;
         let normal = (point - sphere.center).normalize();
         let intensity = self.light_point(point, normal, -direction, sphere.specular);
-        sphere.color * intensity
+        let local_color = sphere.color * intensity;
+
+        if sphere.reflective <= 0.0 || recursion_depth == 0 {
+            return local_color;
+        }
+        let r = reflect_ray(-direction, normal);
+        let reflected_color = self.trace_ray(point, r, 0.001, f32::INFINITY, recursion_depth - 1);
+
+        local_color * (1.0 - sphere.reflective) + reflected_color * sphere.reflective
     }
 }
 
@@ -201,7 +216,7 @@ fn main() {
     for cx in -256..256 {
         for cy in -256..256 {
             let d = viewport.from_canvas(&buffer, cx, cy);
-            let color = scene.trace_ray(origin, d, 1.0, f32::INFINITY);
+            let color = scene.trace_ray(origin, d, 1.0, f32::INFINITY, 3);
             buffer.put_canvas_pixel(cx, cy, color);
         }
     }
