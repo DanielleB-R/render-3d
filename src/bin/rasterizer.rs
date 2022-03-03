@@ -2,6 +2,7 @@ use glam::{DVec3, IVec2};
 use image::{ImageBuffer, RgbImage};
 use std::mem;
 
+use render_3d::camera::Viewport;
 use render_3d::canvas::SymmetricCanvas;
 
 fn interpolate(i0: i32, d0: f64, i1: i32, d1: f64) -> Vec<f64> {
@@ -185,19 +186,97 @@ impl TriangleCanvas for RgbImage {
 
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
+    let viewport: Viewport = Default::default();
 
-    buffer.draw_wireframe_triangle(
-        IVec2::new(-200, -250),
-        IVec2::new(200, 50),
-        IVec2::new(20, 250),
-        DVec3::new(255.0, 255.0, 255.0),
+    // buffer.draw_wireframe_triangle(
+    //     IVec2::new(-200, -250),
+    //     IVec2::new(200, 50),
+    //     IVec2::new(20, 250),
+    //     DVec3::new(255.0, 255.0, 255.0),
+    // );
+
+    // buffer.draw_shaded_triangle(
+    //     ShadedVertex::new(-200, -250, 0.0),
+    //     ShadedVertex::new(200, 50, 0.5),
+    //     ShadedVertex::new(20, 250, 1.0),
+    //     DVec3::new(0.0, 255.0, 0.0),
+    // );
+
+    let vAf = DVec3::new(-2.0, -0.5, 5.0);
+    let vBf = DVec3::new(-2.0, 0.5, 5.0);
+    let vCf = DVec3::new(-1.0, 0.5, 5.0);
+    let vDf = DVec3::new(-1.0, -0.5, 5.0);
+
+    let vAb = DVec3::new(-2.0, -0.5, 6.0);
+    let vBb = DVec3::new(-2.0, 0.5, 6.0);
+    let vCb = DVec3::new(-1.0, 0.5, 6.0);
+    let vDb = DVec3::new(-1.0, -0.5, 6.0);
+
+    let blue = DVec3::new(0.0, 0.0, 255.0);
+    let green = DVec3::new(0.0, 255.0, 0.0);
+    let red = DVec3::new(255.0, 0.0, 0.0);
+
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vAf),
+        viewport.project_vertex(&buffer, vBf),
+        blue,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vBf),
+        viewport.project_vertex(&buffer, vCf),
+        blue,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vCf),
+        viewport.project_vertex(&buffer, vDf),
+        blue,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vDf),
+        viewport.project_vertex(&buffer, vAf),
+        blue,
     );
 
-    buffer.draw_shaded_triangle(
-        ShadedVertex::new(-200, -250, 0.0),
-        ShadedVertex::new(200, 50, 0.5),
-        ShadedVertex::new(20, 250, 1.0),
-        DVec3::new(0.0, 255.0, 0.0),
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vAb),
+        viewport.project_vertex(&buffer, vBb),
+        red,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vBb),
+        viewport.project_vertex(&buffer, vCb),
+        red,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vCb),
+        viewport.project_vertex(&buffer, vDb),
+        red,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vDb),
+        viewport.project_vertex(&buffer, vAb),
+        red,
+    );
+
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vAb),
+        viewport.project_vertex(&buffer, vAf),
+        green,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vBb),
+        viewport.project_vertex(&buffer, vBf),
+        green,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vCb),
+        viewport.project_vertex(&buffer, vCf),
+        green,
+    );
+    buffer.draw_line(
+        viewport.project_vertex(&buffer, vDb),
+        viewport.project_vertex(&buffer, vDf),
+        green,
     );
 
     buffer.save("raster.png").unwrap();

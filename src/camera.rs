@@ -1,12 +1,22 @@
-use glam::DVec3;
+use glam::{DVec3, IVec2};
 use image::RgbImage;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct Viewport {
     width: f64,
     height: f64,
     distance: f64,
+}
+
+impl Default for Viewport {
+    fn default() -> Self {
+        Self {
+            width: 1.0,
+            height: 1.0,
+            distance: 1.0,
+        }
+    }
 }
 
 impl Viewport {
@@ -15,6 +25,21 @@ impl Viewport {
             cx as f64 * (self.width) / (canvas.width() as f64),
             cy as f64 * (self.height) / (canvas.height() as f64),
             self.distance,
+        )
+    }
+
+    pub fn canvas_from_viewport(&self, canvas: &RgbImage, x: f64, y: f64) -> IVec2 {
+        IVec2::new(
+            (x * (canvas.width() as f64) / (self.width)).floor() as i32,
+            (y * (canvas.height() as f64) / (self.height)).floor() as i32,
+        )
+    }
+
+    pub fn project_vertex(&self, canvas: &RgbImage, vertex: DVec3) -> IVec2 {
+        self.canvas_from_viewport(
+            canvas,
+            vertex[0] * self.distance / vertex[2],
+            vertex[1] * self.distance / vertex[2],
         )
     }
 }
