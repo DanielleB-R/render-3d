@@ -1,5 +1,7 @@
 use glam::{DVec3, IVec2};
 use image::{ImageBuffer, RgbImage};
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::mem;
 
 use render_3d::camera::Viewport;
@@ -184,100 +186,90 @@ impl TriangleCanvas for RgbImage {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize)]
+struct Triangle {
+    vertices: [usize; 3],
+    color: DVec3,
+}
+
+impl Triangle {
+    fn render(&self, canvas: &mut RgbImage, projected: &[IVec2]) {
+        canvas.draw_wireframe_triangle(
+            projected[self.vertices[0]],
+            projected[self.vertices[1]],
+            projected[self.vertices[2]],
+            self.color,
+        );
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Object {
+    vertices: Vec<DVec3>,
+    triangles: Vec<Triangle>,
+}
+
+impl Object {
+    fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
+        let projected: Vec<_> = self
+            .vertices
+            .iter()
+            .copied()
+            .map(|v| v + DVec3::new(-1.5, 0.0, 7.0))
+            .map(|v| viewport.project_vertex(canvas, v))
+            .collect();
+
+        for t in &self.triangles {
+            t.render(canvas, &projected);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Instance {
+    model: String,
+    position: DVec3,
+}
+
+impl Instance {
+    fn render(&self, canvas: &mut RgbImage, viewport: &Viewport, models: &HashMap<String, Object>) {
+        let model = models.get(&self.model).unwrap();
+
+        let projected: Vec<_> = model
+            .vertices
+            .iter()
+            .copied()
+            .map(|v| v + self.position)
+            .map(|v| viewport.project_vertex(canvas, v))
+            .collect();
+
+        for t in &model.triangles {
+            t.render(canvas, &projected);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Scene {
+    models: HashMap<String, Object>,
+    instances: Vec<Instance>,
+}
+
+impl Scene {
+    fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
+        for instance in &self.instances {
+            instance.render(canvas, viewport, &self.models);
+        }
+    }
+}
+
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
     let viewport: Viewport = Default::default();
 
-    // buffer.draw_wireframe_triangle(
-    //     IVec2::new(-200, -250),
-    //     IVec2::new(200, 50),
-    //     IVec2::new(20, 250),
-    //     DVec3::new(255.0, 255.0, 255.0),
-    // );
+    let scene: Scene = serde_yaml::from_slice(&std::fs::read("cube.yaml").unwrap()).unwrap();
 
-    // buffer.draw_shaded_triangle(
-    //     ShadedVertex::new(-200, -250, 0.0),
-    //     ShadedVertex::new(200, 50, 0.5),
-    //     ShadedVertex::new(20, 250, 1.0),
-    //     DVec3::new(0.0, 255.0, 0.0),
-    // );
-
-    let vAf = DVec3::new(-2.0, -0.5, 5.0);
-    let vBf = DVec3::new(-2.0, 0.5, 5.0);
-    let vCf = DVec3::new(-1.0, 0.5, 5.0);
-    let vDf = DVec3::new(-1.0, -0.5, 5.0);
-
-    let vAb = DVec3::new(-2.0, -0.5, 6.0);
-    let vBb = DVec3::new(-2.0, 0.5, 6.0);
-    let vCb = DVec3::new(-1.0, 0.5, 6.0);
-    let vDb = DVec3::new(-1.0, -0.5, 6.0);
-
-    let blue = DVec3::new(0.0, 0.0, 255.0);
-    let green = DVec3::new(0.0, 255.0, 0.0);
-    let red = DVec3::new(255.0, 0.0, 0.0);
-
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vAf),
-        viewport.project_vertex(&buffer, vBf),
-        blue,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vBf),
-        viewport.project_vertex(&buffer, vCf),
-        blue,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vCf),
-        viewport.project_vertex(&buffer, vDf),
-        blue,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vDf),
-        viewport.project_vertex(&buffer, vAf),
-        blue,
-    );
-
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vAb),
-        viewport.project_vertex(&buffer, vBb),
-        red,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vBb),
-        viewport.project_vertex(&buffer, vCb),
-        red,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vCb),
-        viewport.project_vertex(&buffer, vDb),
-        red,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vDb),
-        viewport.project_vertex(&buffer, vAb),
-        red,
-    );
-
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vAb),
-        viewport.project_vertex(&buffer, vAf),
-        green,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vBb),
-        viewport.project_vertex(&buffer, vBf),
-        green,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vCb),
-        viewport.project_vertex(&buffer, vCf),
-        green,
-    );
-    buffer.draw_line(
-        viewport.project_vertex(&buffer, vDb),
-        viewport.project_vertex(&buffer, vDf),
-        green,
-    );
+    scene.render(&mut buffer, &viewport);
 
     buffer.save("raster.png").unwrap();
 }
