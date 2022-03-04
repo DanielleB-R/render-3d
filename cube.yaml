@@ -38,6 +38,8 @@ models:
 
 instances:
   - model: cube
-    position: [0, 0, 5]
+    transform:
+      translation: [0, 0, 5]
   - model: cube
-    position: [1, 2, 3]
+    transform:
+      translation: [1, 2, 3]

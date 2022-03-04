@@ -1,7 +1,8 @@
-use glam::{DVec3, IVec2};
+use glam::{DMat3, DVec3, EulerRot, IVec2};
 use image::{ImageBuffer, RgbImage};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::f64::consts::PI;
 use std::mem;
 
 use render_3d::camera::Viewport;
@@ -225,10 +226,71 @@ impl Object {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+struct DegreeRotation {
+    #[serde(default)]
+    x: f64,
+    #[serde(default)]
+    y: f64,
+    #[serde(default)]
+    z: f64,
+}
+
+impl From<DegreeRotation> for DMat3 {
+    fn from(rotation: DegreeRotation) -> Self {
+        Self::from_euler(
+            EulerRot::XYZ,
+            rotation.x * PI / 180.0,
+            rotation.y * PI / 180.0,
+            rotation.z * PI / 180.0,
+        )
+    }
+}
+
+fn default_scale() -> f64 {
+    1.0
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+struct DegreeTransform {
+    #[serde(default = "default_scale")]
+    scale: f64,
+    #[serde(default)]
+    rotation: DegreeRotation,
+    #[serde(default)]
+    translation: DVec3,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(from = "DegreeTransform")]
+struct Transform {
+    scale: f64,
+    rotation: DMat3,
+    translation: DVec3,
+}
+
+impl From<DegreeTransform> for Transform {
+    fn from(other: DegreeTransform) -> Self {
+        Self {
+            scale: other.scale,
+            rotation: other.rotation.into(),
+            translation: other.translation,
+        }
+    }
+}
+
+impl Transform {
+    fn apply(&self, vertex: DVec3) -> DVec3 {
+        let scaled = vertex * self.scale;
+        let rotated = self.rotation * scaled;
+        rotated + self.translation
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct Instance {
     model: String,
-    position: DVec3,
+    transform: Transform,
 }
 
 impl Instance {
@@ -238,8 +300,7 @@ impl Instance {
         let projected: Vec<_> = model
             .vertices
             .iter()
-            .copied()
-            .map(|v| v + self.position)
+            .map(|v| self.transform.apply(*v))
             .map(|v| viewport.project_vertex(canvas, v))
             .collect();
 
