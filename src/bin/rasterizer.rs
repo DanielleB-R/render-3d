@@ -1,4 +1,4 @@
-use glam::{DMat3, DVec3, EulerRot, IVec2};
+use glam::{DMat3, DMat4, DQuat, DVec3, EulerRot, IVec2};
 use image::{ImageBuffer, RgbImage};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -6,21 +6,8 @@ use std::f64::consts::PI;
 use std::mem;
 
 use render_3d::camera::Viewport;
-use render_3d::canvas::SymmetricCanvas;
-
-fn interpolate(i0: i32, d0: f64, i1: i32, d1: f64) -> Vec<f64> {
-    let mut values = vec![];
-
-    let a = (d1 - d0) / (i1 - i0) as f64;
-    let mut d = d0;
-
-    for _ in i0..=i1 {
-        values.push(d);
-        d += a;
-    }
-
-    values
-}
+use render_3d::canvas::{LineCanvas, SymmetricCanvas};
+use render_3d::utils::interpolate;
 
 #[derive(Debug, Clone, Copy)]
 struct ShadedVertex {
@@ -46,34 +33,6 @@ impl ShadedVertex {
 
     fn h(&self) -> f64 {
         self.intensity
-    }
-}
-
-trait LineCanvas {
-    fn draw_line(&mut self, p0: IVec2, p1: IVec2, color: DVec3);
-}
-
-impl LineCanvas for RgbImage {
-    fn draw_line(&mut self, p0: IVec2, p1: IVec2, color: DVec3) {
-        if (p1[0] - p0[0]).abs() > (p1[1] - p0[1]).abs() {
-            // this line is more horizontal than vertical
-            let (pl, pr) = if p0[0] < p1[0] { (p0, p1) } else { (p1, p0) };
-
-            let ys = interpolate(pl[0], pl[1] as f64, pr[0], pr[1] as f64);
-
-            for x in pl[0]..=pr[0] {
-                self.put_canvas_pixel(x, ys[(x - pl[0]) as usize].floor() as i32, color);
-            }
-        } else {
-            // this line is more vertical than horizontal
-            let (pl, pr) = if p0[1] < p1[1] { (p0, p1) } else { (p1, p0) };
-
-            let xs = interpolate(pl[1], pl[0] as f64, pr[1], pr[0] as f64);
-
-            for y in pl[1]..=pr[1] {
-                self.put_canvas_pixel(xs[(y - pl[1]) as usize].floor() as i32, y, color);
-            }
-        }
     }
 }
 
@@ -210,22 +169,6 @@ struct Object {
     triangles: Vec<Triangle>,
 }
 
-impl Object {
-    fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
-        let projected: Vec<_> = self
-            .vertices
-            .iter()
-            .copied()
-            .map(|v| v + DVec3::new(-1.5, 0.0, 7.0))
-            .map(|v| viewport.project_vertex(canvas, v))
-            .collect();
-
-        for t in &self.triangles {
-            t.render(canvas, &projected);
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 struct DegreeRotation {
     #[serde(default)]
@@ -279,11 +222,13 @@ impl From<DegreeTransform> for Transform {
     }
 }
 
-impl Transform {
-    fn apply(&self, vertex: DVec3) -> DVec3 {
-        let scaled = vertex * self.scale;
-        let rotated = self.rotation * scaled;
-        rotated + self.translation
+impl From<Transform> for DMat4 {
+    fn from(other: Transform) -> Self {
+        Self::from_scale_rotation_translation(
+            DVec3::splat(other.scale),
+            DQuat::from_mat3(&other.rotation),
+            other.translation,
+        )
     }
 }
 
@@ -294,13 +239,19 @@ struct Instance {
 }
 
 impl Instance {
-    fn render(&self, canvas: &mut RgbImage, viewport: &Viewport, models: &HashMap<String, Object>) {
+    fn render(
+        &self,
+        canvas: &mut RgbImage,
+        transform_matrix: &DMat4,
+        viewport: &Viewport,
+        models: &HashMap<String, Object>,
+    ) {
         let model = models.get(&self.model).unwrap();
 
         let projected: Vec<_> = model
             .vertices
             .iter()
-            .map(|v| self.transform.apply(*v))
+            .map(|v| transform_matrix.transform_point3(*v))
             .map(|v| viewport.project_vertex(canvas, v))
             .collect();
 
@@ -311,15 +262,23 @@ impl Instance {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+struct Camera {
+    transform: Transform,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct Scene {
     models: HashMap<String, Object>,
     instances: Vec<Instance>,
+    camera: Camera,
 }
 
 impl Scene {
     fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
+        let camera_matrix = DMat4::from(self.camera.transform).inverse();
         for instance in &self.instances {
-            instance.render(canvas, viewport, &self.models);
+            let transform_matrix = camera_matrix * DMat4::from(instance.transform);
+            instance.render(canvas, &transform_matrix, viewport, &self.models);
         }
     }
 }

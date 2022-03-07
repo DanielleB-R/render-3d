@@ -1,10 +1,9 @@
 mod camera;
-mod canvas;
 
 use crate::camera::Camera;
-use crate::canvas::SymmetricCanvas;
 use glam::DVec3;
 use image::{ImageBuffer, RgbImage};
+use render_3d::canvas::SymmetricCanvas;
 use serde::Deserialize;
 
 type Color = DVec3;

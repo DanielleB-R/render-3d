@@ -43,3 +43,7 @@ instances:
   - model: cube
     transform:
       translation: [1, 2, 3]
+
+camera:
+  transform:
+    translation: [0, 0, -1]
