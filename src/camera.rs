@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub struct Viewport {
     width: f64,
     height: f64,
-    distance: f64,
+    pub distance: f64,
 }
 
 impl Default for Viewport {

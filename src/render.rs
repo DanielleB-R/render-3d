@@ -1,7 +1,7 @@
 use crate::camera::Viewport;
 use crate::canvas::TriangleCanvas;
 use crate::scene::{Object, Scene, Triangle};
-use glam::{DMat4, IVec2};
+use glam::IVec2;
 use image::RgbImage;
 
 impl Triangle {
@@ -16,12 +16,11 @@ impl Triangle {
 }
 
 impl Object {
-    pub fn render(&self, canvas: &mut RgbImage, transform_matrix: &DMat4, viewport: &Viewport) {
+    pub fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
         let projected: Vec<_> = self
             .vertices
             .iter()
-            .map(|v| transform_matrix.transform_point3(*v))
-            .map(|v| viewport.project_vertex(canvas, v))
+            .map(|v| viewport.project_vertex(canvas, *v))
             .collect();
 
         for t in &self.triangles {
@@ -31,12 +30,9 @@ impl Object {
 }
 
 impl Scene {
-    pub fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
-        let camera_matrix = self.camera.transform.inverse();
-
+    pub fn render(&self, canvas: &mut RgbImage) {
         for object in &self.objects {
-            let transform_matrix = camera_matrix * object.transform;
-            object.render(canvas, &transform_matrix, viewport);
+            object.render(canvas, &self.camera.viewport);
         }
     }
 }

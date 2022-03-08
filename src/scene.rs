@@ -1,3 +1,4 @@
+use crate::camera::Viewport;
 use crate::scene_definition::{
     CameraDefinition, InstanceDefinition, ModelDefinition, RotationDefinition, SceneDefinition,
     TransformDefinition, TriangleDefinition,
@@ -43,7 +44,8 @@ impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
     fn from((instance, models): (InstanceDefinition, &HashMap<String, ModelDefinition>)) -> Self {
         let model = models.get(&instance.model).unwrap();
 
-        let bounding_center: DVec3 = model.vertices.iter().sum();
+        let mut bounding_center: DVec3 = model.vertices.iter().sum();
+        bounding_center /= model.vertices.len() as f64;
         let bounding_radius: f64 = model
             .vertices
             .iter()
@@ -52,10 +54,12 @@ impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
             .unwrap()
             .sqrt();
 
+        let transform: DMat4 = instance.transform.into();
+
         Self {
             vertices: model.vertices.clone(),
             triangles: model.triangles.clone(),
-            transform: instance.transform.into(),
+            transform,
             bounding_center,
             bounding_radius,
         }
@@ -65,12 +69,14 @@ impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
     pub transform: DMat4,
+    pub viewport: Viewport,
 }
 
 impl From<CameraDefinition> for Camera {
     fn from(other: CameraDefinition) -> Self {
         Self {
             transform: other.transform.into(),
+            viewport: other.viewport,
         }
     }
 }

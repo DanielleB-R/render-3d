@@ -2,6 +2,8 @@ use glam::DVec3;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+use crate::camera::Viewport;
+
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct TriangleDefinition {
     pub vertices: [usize; 3],
@@ -47,6 +49,8 @@ pub struct InstanceDefinition {
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct CameraDefinition {
     pub transform: TransformDefinition,
+    #[serde(default)]
+    pub viewport: Viewport,
 }
 
 #[derive(Debug, Clone, Deserialize)]

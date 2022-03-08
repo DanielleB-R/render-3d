@@ -1,6 +1,4 @@
 use image::{ImageBuffer, RgbImage};
-
-use render_3d::camera::Viewport;
 use render_3d::scene::Scene;
 
 // #[derive(Debug, Clone, Copy)]
@@ -32,11 +30,10 @@ use render_3d::scene::Scene;
 
 fn main() {
     let mut buffer: RgbImage = ImageBuffer::new(512, 512);
-    let viewport: Viewport = Default::default();
 
     let scene: Scene = serde_yaml::from_slice(&std::fs::read("cube.yaml").unwrap()).unwrap();
 
-    scene.render(&mut buffer, &viewport);
+    scene.transform().clip().render(&mut buffer);
 
     buffer.save("raster.png").unwrap();
 }
