@@ -32,11 +32,11 @@ impl From<TransformDefinition> for DMat4 {
 
 #[derive(Debug, Clone)]
 pub struct Object {
-    vertices: Vec<DVec3>,
-    triangles: Vec<Triangle>,
-    transform: DMat4,
-    bounding_center: DVec3,
-    bounding_radius: f64,
+    pub vertices: Vec<DVec3>,
+    pub triangles: Vec<Triangle>,
+    pub transform: DMat4,
+    pub bounding_center: DVec3,
+    pub bounding_radius: f64,
 }
 
 impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
@@ -64,7 +64,7 @@ impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
-    transform: DMat4,
+    pub transform: DMat4,
 }
 
 impl From<CameraDefinition> for Camera {
@@ -78,8 +78,8 @@ impl From<CameraDefinition> for Camera {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(from = "SceneDefinition")]
 pub struct Scene {
-    objects: Vec<Object>,
-    camera: Camera,
+    pub objects: Vec<Object>,
+    pub camera: Camera,
 }
 
 impl From<SceneDefinition> for Scene {
