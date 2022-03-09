@@ -8,7 +8,24 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
-pub type Triangle = TriangleDefinition;
+#[derive(Debug, Clone, Copy)]
+pub struct Triangle {
+    pub v0: DVec3,
+    pub v1: DVec3,
+    pub v2: DVec3,
+    pub color: DVec3,
+}
+
+impl From<(TriangleDefinition, &Vec<DVec3>)> for Triangle {
+    fn from((triangle, vertices): (TriangleDefinition, &Vec<DVec3>)) -> Self {
+        Self {
+            v0: vertices[triangle.vertices[0]],
+            v1: vertices[triangle.vertices[1]],
+            v2: vertices[triangle.vertices[2]],
+            color: triangle.color,
+        }
+    }
+}
 
 impl From<RotationDefinition> for DQuat {
     fn from(rotation: RotationDefinition) -> Self {
@@ -33,7 +50,6 @@ impl From<TransformDefinition> for DMat4 {
 
 #[derive(Debug, Clone)]
 pub struct Object {
-    pub vertices: Vec<DVec3>,
     pub triangles: Vec<Triangle>,
     pub transform: DMat4,
     pub bounding_center: DVec3,
@@ -57,8 +73,11 @@ impl From<(InstanceDefinition, &HashMap<String, ModelDefinition>)> for Object {
         let transform: DMat4 = instance.transform.into();
 
         Self {
-            vertices: model.vertices.clone(),
-            triangles: model.triangles.clone(),
+            triangles: model
+                .triangles
+                .iter()
+                .map(|t| Triangle::from((*t, &model.vertices)))
+                .collect(),
             transform,
             bounding_center,
             bounding_radius,
