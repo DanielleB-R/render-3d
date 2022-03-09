@@ -19,71 +19,52 @@ impl Plane {
 }
 
 impl Triangle {
+    // We call this with the one positive vertex as `a`
+    fn clip_one_positive(&self, a: DVec3, b: DVec3, c: DVec3, plane: Plane) -> Vec<Self> {
+        vec![Self {
+            v0: a,
+            v1: plane.intersection(a, b),
+            v2: plane.intersection(a, c),
+            color: self.color,
+        }]
+    }
+
+    // We call this with the one negative vertex as `c`
+    fn clip_one_negative(&self, a: DVec3, b: DVec3, c: DVec3, plane: Plane) -> Vec<Self> {
+        let ap = plane.intersection(a, c);
+        let bp = plane.intersection(b, c);
+
+        vec![
+            Self {
+                v0: a,
+                v1: b,
+                v2: ap,
+                color: self.color,
+            },
+            Self {
+                v0: ap,
+                v1: b,
+                v2: bp,
+                color: self.color,
+            },
+        ]
+    }
+
     fn clip_against_plane(&self, plane: Plane) -> Vec<Self> {
         let d0 = plane.signed_distance(self.v0);
         let d1 = plane.signed_distance(self.v1);
         let d2 = plane.signed_distance(self.v2);
 
-        let sign = d0.signum() * d1.signum() * d2.signum();
-
-        // match (d0.signum(), d1.signum(), d2.signum()) {
-        //     (1.0, 1.0, 1.0) => vec![*self],
-        //     (-1.0, -1.0, -1.0) => vec![],
-        //     (1.0, -1.0, -1.0)
-        // }
-        if sign > 0.0 {
-            if d0 > 0.0 && d1 > 0.0 && d2 > 0.0 {
-                // all positive, we're in the volume
-                vec![*self]
-            } else {
-                // only one positive
-                let (a, b, c) = if d0 > 0.0 {
-                    (self.v0, self.v1, self.v2)
-                } else if d1 > 0.0 {
-                    (self.v1, self.v0, self.v2)
-                } else {
-                    (self.v2, self.v0, self.v1)
-                };
-
-                vec![Self {
-                    v0: a,
-                    v1: plane.intersection(a, b),
-                    v2: plane.intersection(a, c),
-                    color: self.color,
-                }]
-            }
-        } else {
-            if d0 < 0.0 && d1 < 0.0 && d2 < 0.0 {
-                // all negative, we're out of the volume
-                vec![]
-            } else {
-                // only one negative
-                let (a, b, c) = if d0 < 0.0 {
-                    (self.v1, self.v2, self.v0)
-                } else if d1 < 0.0 {
-                    (self.v0, self.v2, self.v1)
-                } else {
-                    (self.v0, self.v1, self.v2)
-                };
-
-                let ap = plane.intersection(a, c);
-                let bp = plane.intersection(b, c);
-
-                vec![
-                    Self {
-                        v0: a,
-                        v1: b,
-                        v2: ap,
-                        color: self.color,
-                    },
-                    Self {
-                        v0: ap,
-                        v1: b,
-                        v2: bp,
-                        color: self.color,
-                    },
-                ]
-            }
+        match (d0.signum() as i32, d1.signum() as i32, d2.signum() as i32) {
+            (1, 1, 1) => vec![*self],
+            (-1, -1, -1) => vec![],
+            (1, -1, -1) => self.clip_one_positive(self.v0, self.v1, self.v2, plane),
+            (-1, 1, -1) => self.clip_one_positive(self.v1, self.v0, self.v2, plane),
+            (-1, -1, 1) => self.clip_one_positive(self.v2, self.v0, self.v1, plane),
+            (-1, 1, 1) => self.clip_one_negative(self.v1, self.v2, self.v0, plane),
+            (1, -1, 1) => self.clip_one_negative(self.v0, self.v2, self.v1, plane),
+            (1, 1, -1) => self.clip_one_negative(self.v0, self.v1, self.v2, plane),
+            _ => unreachable!(),
         }
     }
 }
