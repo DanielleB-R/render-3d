@@ -4,10 +4,13 @@ use crate::scene::{Object, Scene, Triangle};
 
 impl Triangle {
     pub fn render(&self, canvas: &mut Canvas, viewport: &Viewport) {
-        canvas.draw_filled_triangle(
+        canvas.draw_filled_depth_triangle(
             viewport.project_vertex(canvas, self.v0),
+            self.v0[2],
             viewport.project_vertex(canvas, self.v1),
+            self.v1[2],
             viewport.project_vertex(canvas, self.v2),
+            self.v2[2],
             self.color,
         );
     }

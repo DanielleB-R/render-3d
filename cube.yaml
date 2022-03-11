@@ -46,6 +46,7 @@ instances:
 
 camera:
   transform:
-    translation: [0, 0, 0]
+    translation: [-2, 0, -1]
     rotation:
-      y: 20
+      y: 30
+      x: -10

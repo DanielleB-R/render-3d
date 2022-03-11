@@ -139,6 +139,58 @@ impl Canvas {
         }
     }
 
+    pub fn draw_filled_depth_triangle(
+        &mut self,
+        mut p0: IVec2,
+        mut z0: f64,
+        mut p1: IVec2,
+        mut z1: f64,
+        mut p2: IVec2,
+        mut z2: f64,
+        color: DVec3,
+    ) {
+        // sort the points by y coordinate
+        if p1[1] < p0[1] {
+            mem::swap(&mut p1, &mut p0);
+            mem::swap(&mut z1, &mut z0);
+        }
+        if p2[1] < p0[1] {
+            mem::swap(&mut p2, &mut p0);
+            mem::swap(&mut z2, &mut z0)
+        }
+        if p2[1] < p1[1] {
+            mem::swap(&mut p2, &mut p1);
+            mem::swap(&mut z2, &mut z1);
+        }
+
+        let (x012, x02) = map_triangle_attribute(
+            (p0[1], p0[0] as f64),
+            (p1[1], p1[0] as f64),
+            (p2[1], p2[0] as f64),
+        );
+
+        let (depth012, depth02) =
+            map_triangle_attribute((p0[1], 1.0 / z0), (p1[1], 1.0 / z1), (p2[1], 1.0 / z2));
+
+        let m = x012.len() / 2;
+        let (x_left, depth_left, x_right, depth_right) = if x02[m] < x012[m] {
+            (x02, depth02, x012, depth012)
+        } else {
+            (x012, depth012, x02, depth02)
+        };
+
+        for y in p0[1]..=p2[1] {
+            let i = (y - p0[1]) as usize;
+            let x0 = x_left[i] as i32;
+            let x1 = x_right[i] as i32;
+            let depth_segment = interpolate(x0, depth_left[i], x1, depth_right[i]);
+            for x in x0..=x1 {
+                let depth = depth_segment[(x - x0) as usize];
+                self.put_depth_pixel(x, y, depth, color);
+            }
+        }
+    }
+
     pub fn save(&self, path: impl AsRef<std::path::Path>) -> image::ImageResult<()> {
         self.image.save(path)
     }
