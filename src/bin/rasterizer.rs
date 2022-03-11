@@ -6,7 +6,11 @@ fn main() {
 
     let scene: Scene = serde_yaml::from_slice(&std::fs::read("cube.yaml").unwrap()).unwrap();
 
-    scene.transform().clip().render(&mut canvas);
+    scene
+        .transform()
+        .cull_back_faces()
+        .clip()
+        .render(&mut canvas);
 
     canvas.save("raster.png").unwrap();
 }
