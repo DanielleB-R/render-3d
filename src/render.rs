@@ -1,11 +1,10 @@
 use crate::camera::Viewport;
-use crate::canvas::TriangleCanvas;
+use crate::canvas::Canvas;
 use crate::scene::{Object, Scene, Triangle};
-use image::RgbImage;
 
 impl Triangle {
-    pub fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
-        canvas.draw_wireframe_triangle(
+    pub fn render(&self, canvas: &mut Canvas, viewport: &Viewport) {
+        canvas.draw_filled_triangle(
             viewport.project_vertex(canvas, self.v0),
             viewport.project_vertex(canvas, self.v1),
             viewport.project_vertex(canvas, self.v2),
@@ -15,7 +14,7 @@ impl Triangle {
 }
 
 impl Object {
-    pub fn render(&self, canvas: &mut RgbImage, viewport: &Viewport) {
+    pub fn render(&self, canvas: &mut Canvas, viewport: &Viewport) {
         for t in &self.triangles {
             t.render(canvas, viewport);
         }
@@ -23,7 +22,7 @@ impl Object {
 }
 
 impl Scene {
-    pub fn render(&self, canvas: &mut RgbImage) {
+    pub fn render(&self, canvas: &mut Canvas) {
         for object in &self.objects {
             object.render(canvas, &self.camera.viewport);
         }

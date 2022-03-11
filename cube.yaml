@@ -42,8 +42,10 @@ instances:
       translation: [0, 0, 5]
   - model: cube
     transform:
-      translation: [1, 2, 3]
+      translation: [1, 1, 3]
 
 camera:
   transform:
     translation: [0, 0, 0]
+    rotation:
+      y: 20
