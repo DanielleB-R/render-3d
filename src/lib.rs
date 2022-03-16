@@ -2,6 +2,7 @@ pub mod camera;
 pub mod canvas;
 pub mod clip;
 pub mod cull;
+pub mod light;
 pub mod render;
 pub mod scene;
 pub mod scene_definition;
