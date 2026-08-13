@@ -59,10 +59,10 @@ impl Triangle {
             (1, 1, 1) => vec![*self],
             (-1, -1, -1) => vec![],
             (1, -1, -1) => self.clip_one_positive(self.v0, self.v1, self.v2, plane),
-            (-1, 1, -1) => self.clip_one_positive(self.v1, self.v0, self.v2, plane),
+            (-1, 1, -1) => self.clip_one_positive(self.v1, self.v2, self.v0, plane),
             (-1, -1, 1) => self.clip_one_positive(self.v2, self.v0, self.v1, plane),
             (-1, 1, 1) => self.clip_one_negative(self.v1, self.v2, self.v0, plane),
-            (1, -1, 1) => self.clip_one_negative(self.v0, self.v2, self.v1, plane),
+            (1, -1, 1) => self.clip_one_negative(self.v2, self.v0, self.v1, plane),
             (1, 1, -1) => self.clip_one_negative(self.v0, self.v1, self.v2, plane),
             _ => unreachable!(),
         }
@@ -94,7 +94,7 @@ impl Object {
     fn clip(&self, planes: &[Plane]) -> Option<Self> {
         let mut object = self.clone();
         for plane in planes {
-            object = self.clip_against_plane(*plane)?;
+            object = object.clip_against_plane(*plane)?;
         }
         Some(object)
     }
