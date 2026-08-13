@@ -1,5 +1,4 @@
 use glam::{DVec3, IVec2};
-use image::RgbImage;
 use serde::Deserialize;
 
 use crate::canvas::Canvas;
@@ -22,7 +21,7 @@ impl Default for Viewport {
 }
 
 impl Viewport {
-    pub fn direction_from_canvas(&self, canvas: &RgbImage, cx: i32, cy: i32) -> DVec3 {
+    pub fn direction_from_canvas(&self, canvas: &Canvas, cx: i32, cy: i32) -> DVec3 {
         DVec3::new(
             cx as f64 * (self.width) / (canvas.width() as f64),
             cy as f64 * (self.height) / (canvas.height() as f64),

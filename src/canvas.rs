@@ -25,7 +25,7 @@ impl Canvas {
         }
     }
 
-    fn put_pixel(&mut self, cx: i32, cy: i32, color: DVec3) {
+    pub fn put_pixel(&mut self, cx: i32, cy: i32, color: DVec3) {
         let x = self.half_width + cx;
         if x < 0 || x >= self.width as i32 {
             return;
