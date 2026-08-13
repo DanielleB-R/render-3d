@@ -1,7 +1,5 @@
-mod camera;
-
-use crate::camera::Camera;
 use glam::DVec3;
+use render_3d::camera::Camera;
 use render_3d::canvas::Canvas;
 use serde::Deserialize;
 

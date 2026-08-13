@@ -83,8 +83,7 @@ impl Object {
             triangles: self
                 .triangles
                 .iter()
-                .map(|t| t.clip_against_plane(plane))
-                .flatten()
+                .flat_map(|t| t.clip_against_plane(plane))
                 .collect(),
             transform: self.transform,
             bounding_center: self.bounding_center,
@@ -95,10 +94,7 @@ impl Object {
     fn clip(&self, planes: &[Plane]) -> Option<Self> {
         let mut object = self.clone();
         for plane in planes {
-            match self.clip_against_plane(*plane) {
-                Some(obj) => object = obj,
-                None => return None,
-            }
+            object = self.clip_against_plane(*plane)?;
         }
         Some(object)
     }
